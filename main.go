@@ -18,11 +18,6 @@ var (
 	outDir = "."
 )
 
-func exit(msg interface{}) {
-	logger.Println(msg)
-	os.Exit(1)
-}
-
 func init() {
 	flag.Usage = func() {
 		prog := path.Base(os.Args[0])
@@ -47,14 +42,9 @@ func init() {
 	if len(args) >= 1 {
 		outDir = args[0]
 		if err := os.MkdirAll(outDir, 0755); err != nil {
-			exit(fmt.Sprintf("can't create output directory (reason: %s)", strconv.Quote(err.Error())))
+			Fatal("can't create output directory", err)
 		}
 	}
-}
-
-
-func printWarning(msg interface{}) {
-	logger.Printf("warning: %v\n", msg)
 }
 
 func TempFile(size uint) (*os.File, error) {
@@ -72,7 +62,7 @@ func TempFile(size uint) (*os.File, error) {
 func main() {
 	tmpFile, err := TempFile(32)
 	if err != nil {
-		exit(fmt.Sprintf("can't create temporary zip file (reason: %s)", strconv.Quote(err.Error())))
+		Fatal("can't create temporary zip file", err)
 	}
 	defer func() {
 		os.Remove(tmpFile.Name())
@@ -80,21 +70,21 @@ func main() {
 
 	s, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		exit(err)
+		Fatal("can't read zip file", err)
 	}
 	if _, err := tmpFile.Write(s); err != nil {
-		exit(fmt.Sprintf("can't write to temporary zip file (reason: %s)", strconv.Quote(err.Error())))
+		Fatal("can't write to temporary zip file", err)
 	}
 
 	r, err := zip.OpenReader(tmpFile.Name())
 	if err != nil {
-		exit(fmt.Sprintf("can't read from temporary zip file (reason: %s)", strconv.Quote(err.Error())))
+		Fatal("can't read from temporary zip file", err)
 	}
 
 	for _, f := range r.File {
 		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(path.Join(outDir, f.Name), f.Mode()); err != nil {
-				printWarning(fmt.Sprintf("can't make directory %s (reason: %s)", strconv.Quote(f.Name), strconv.Quote(err.Error())))
+				Warn("can't make directory %s", err, strconv.Quote(f.Name))
 			} else {
 				fmt.Println(f.Name)
 			}
@@ -103,20 +93,20 @@ func main() {
 
 		r, err := f.Open()
 		if err != nil {
-			printWarning(fmt.Sprintf("can't open file %s in zip file (reason: %s)", strconv.Quote(f.Name), strconv.Quote(err.Error())))
+			Warn("can't open file %s in zip file", err, strconv.Quote(f.Name))
 			continue
 		}
 
 		if err := os.MkdirAll(path.Join(outDir, path.Dir(f.Name)), 0755); err != nil {
-			printWarning(fmt.Sprintf("can't make directory %s (reason: %s)", strconv.Quote(path.Dir(f.Name)), strconv.Quote(err.Error())))
+			Warn("can't make directory %s", err, strconv.Quote(path.Dir(f.Name)))
 		}
 		w, err := os.OpenFile(path.Join(outDir, f.Name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
-			printWarning(fmt.Sprintf("can't open file %s (reason: %s)", strconv.Quote(f.Name), strconv.Quote(err.Error())))
+			Warn("can't open file %s", err, strconv.Quote(f.Name))
 			continue
 		}
 		if _, err := io.Copy(w, r); err != nil {
-			printWarning(fmt.Sprintf("can't copy file contents: %s (reason: %s)", strconv.Quote(f.Name), strconv.Quote(err.Error())))
+			Warn("can't copy file contents: %s", err, strconv.Quote(f.Name))
 			continue
 		}
 		fmt.Println(f.Name)
