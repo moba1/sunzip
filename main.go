@@ -18,16 +18,25 @@ var (
 	outDir = "."
 )
 
+const (
+	version = "0.0.0-dev"
+)
+
 func init() {
+	prog := path.Base(os.Args[0])
+	showVer := flag.Bool("version", false, "show version")
 	flag.Usage = func() {
-		prog := path.Base(os.Args[0])
 		out := func (format string, a ...interface{}) {
 			fmt.Fprintf(flag.CommandLine.Output(), format+"\n", a...)
 		}
 		out("Usage of %s", prog)
 		out("\t%s [outDir]", prog)
+		out("\t%s -v", prog)
 		out("Args:")
 		out("\toutDir\t output root directory. if this argument is set, all files and directories will be extracted to the specified directory. (default: \".\"")
+		out("Options:")
+		out("\t-v")
+		out("\t\tshow version")
 		out("Example:")
 		out("\t$ echo foo > bar.txt")
 		out("\t$ zip baz.zip bar.txt")
@@ -38,6 +47,12 @@ func init() {
 		out("\tfoo")
 	}
 	flag.Parse()
+
+	if *showVer {
+		fmt.Printf("%s v%s\n", prog, version)
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	if len(args) >= 1 {
 		outDir = args[0]
